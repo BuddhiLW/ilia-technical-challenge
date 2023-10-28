@@ -49,7 +49,9 @@ See if the project is running as supposed:
 #+begin_src shell
 ./test/nex-smoketest.sh local
 #+end_src
-
+** DONE Expected output
+#+ATTR_HTML: :width 800px
+[[file:doc-stuff/img/expected-output.png]]
 
 
 * TODO Running the application
