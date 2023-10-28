@@ -20,7 +20,7 @@ conda env create -f environment_dev.yml
 #     $ conda deactivate
 
 echo -n "Creating backings and docker containers..."
-./dev_run_backingsvcs.sh
+sudo ./dev_run_backingsvcs.sh
 
 echo -n "Start the gateway, orders and products services"
 ./dev_run.sh gateway.service orders.service products.service &

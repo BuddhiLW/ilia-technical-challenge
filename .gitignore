@@ -10,3 +10,4 @@ htmlcov
 **/*.log
 stats.xml
 .env
+versions/*

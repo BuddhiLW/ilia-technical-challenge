@@ -47,15 +47,18 @@ bash startup.sh
 See if the project is running as supposed:
 
 #+begin_src shell
-./test/nex-smoketest.sh local
+./test/nex-smoketeSt.sh local
 #+end_src
 ** DONE Expected output
 #+ATTR_HTML: :width 800px
 [[file:doc-stuff/img/expected-output.png]]
 
-
-* TODO Running the application
+* DONE Running the application
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
+** DONE Run in debugger mode
+#+ATTR_HTML: :width 800px
+[[file:doc-stuff/img/running-with-debug.png]]
+
 * TODO Features
 DEADLINE: <2023-10-28 Sat> SCHEDULED: <2023-10-27 Fri>
 * TODO Tasks
