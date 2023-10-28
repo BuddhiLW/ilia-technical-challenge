@@ -2,10 +2,56 @@
 
 *The deadline is 10h, 01/11/2023*
 
-* STRT Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]]
+* DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]]
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-26 Thu>
-** STRT Installation
+** DONE Installation
 DEADLINE: <2023-10-26 Thu> SCHEDULED: <2023-10-26 Thu>
+Prerequisite:
+- =conda=
+
+You can install the dependencies and create the environment in =apt-derived= systems, like Ubuntu, running:
+#+begin_src bash
+bash basic-setup-and-run.bash
+#+end_src
+
+It will create the =conda= environment =nameko-devex=
+
+#+begin_quote
+To activate this environment, use
+
+    $ conda activate nameko-devex
+
+To deactivate an active environment, use
+
+    $ conda deactivate
+#+end_quote
+
+Finally, the script will
+- Create backings;
+- Start the services;
+- Run a simple test to see if everything run smoothly.
+
+** DONE Running the services
+*** DONE Initializing =script= after installation
+#+begin_src shell
+bash startup.sh
+#+end_src
+
+*** DONE Development
+
+#+begin_src bash
+./dev_run_backingsvcs.sh && ./dev_run.sh gateway.service orders.service products.service &
+#+end_src
+
+*** DONE Simple test
+See if the project is running as supposed:
+
+#+begin_src shell
+./test/nex-smoketest.sh local
+#+end_src
+
+
+
 * TODO Running the application
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 * TODO Features
