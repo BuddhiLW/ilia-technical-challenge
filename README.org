@@ -58,6 +58,9 @@ DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 ** DONE Run in debugger mode
 #+ATTR_HTML: :width 800px
 [[file:doc-stuff/img/running-with-debug.png]]
+** DONE Performance Test (via Taurus BlazeMeter locally)
+#+ATTR_HTML: :width 1000px
+[[file:doc-stuff/img/performance-test.png]]
 
 * TODO Features
 DEADLINE: <2023-10-28 Sat> SCHEDULED: <2023-10-27 Fri>
@@ -65,3 +68,14 @@ DEADLINE: <2023-10-28 Sat> SCHEDULED: <2023-10-27 Fri>
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
 * TODO Side-notes
 DEADLINE: <2023-11-01 Wed> SCHEDULED: <2023-10-26 Thu>
+** Technical exercises responses
+
+*** Follow README-DevEnv.md to setup dev environment for exercise
+#+begin_quote
+- Able to run locally, debug, unit-test
+- Able to smoke-test and performance test
+#+end_quote
+
+The following requirements can be seen completed in sections:
+- [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
+- [[*Running the application][Running the application]]
