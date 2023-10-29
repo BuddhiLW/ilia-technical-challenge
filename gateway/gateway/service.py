@@ -82,13 +82,13 @@ class GatewayService(object):
         """Deletes product in db, given its `product_id`"""
 
         # ------- Delete the product
-        # print("service: delete product_id:", product_id)
         self.products_rpc.delete(product_id)
 
         # Respond with the product_id -- means it was a successeful a call
         return Response(
             ProductSchema().dumps({'id': product_id}).data,
-            mimetype='application/json'
+            mimetype='application/json',
+            status=204
         )
 
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
