@@ -65,6 +65,7 @@ DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 * TODO Features
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-27 Fri>
 ** TODO Product Service
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
 #+begin_src
 2. Enhance product service
 - Delete product rpc call
@@ -138,11 +139,40 @@ echo
 
 Returns the text: ={"id": "the_odyssey"}=.
 
-*** STRT Wire into =perf-test= (2)
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/product-deletion-operation.png]]
+
+*** DONE Wire into =perf-test= (2)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
 #+begin_src bash
 ./test/nex-bzt.sh local
 #+end_src
+
+In order to insert the test case, we shall modify the =yml= file digested, in order to run the *performance tests*.
+
+Therefore, inserting the following test-case in the file =test/nex-bzt.yml= - Line 111, does the job:
+
+#+begin_src yaml
+    # 5. Delete Product
+    - url: /products/${product_id}
+      label: product-delete
+      think-time: uniform(0s, 0s)
+      method: DELETE
+
+      assert:
+      - contains:
+        - 204
+        subject: http-code
+        not: false
+      extract-jsonpath:
+        product_key: $.id
+        default: NOT_FOUND
+
+    - if: '"${order_id}" == "NOT_FOUND"'
+      then:
+        - action: continue
+#+end_src
+
 *** STRT Wire unit-test for this method
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
 ** TODO Orders Service
