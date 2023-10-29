@@ -2,7 +2,7 @@
 
 *The deadline is 10h, 01/11/2023*
 
-* DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]]
+* DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1)
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-26 Thu>
 ** DONE Installation
 DEADLINE: <2023-10-26 Thu> SCHEDULED: <2023-10-26 Thu>
@@ -53,7 +53,7 @@ See if the project is running as supposed:
 #+ATTR_HTML: :width 800px
 [[file:doc-stuff/img/expected-output.png]]
 
-* DONE Running the application
+* DONE Running the application (1)
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 ** DONE Run in debugger mode
 #+ATTR_HTML: :width 800px
@@ -63,7 +63,100 @@ DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 [[file:doc-stuff/img/performance-test.png]]
 
 * TODO Features
-DEADLINE: <2023-10-28 Sat> SCHEDULED: <2023-10-27 Fri>
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-27 Fri>
+** TODO Product Service
+#+begin_src
+2. Enhance product service
+- Delete product rpc call
+- Wire into smoketest.sh
+- Wire into perf-test
+- Wire unit-test for this method
+#+end_src
+
+*** DONE =Delete-product= rpc call (2)
+In [[file:products/products/service.py][products/products/service.py]], p.38.
+
+The idea is to receive an =id= and search it the db, then delete it.
+
+In gateway/gateway/service.py - Line 77, we add a instruction sequence of steps to be followed, upon deletion call (e.g., =curl -X "DELETE"=).
+
+It will call the method =delete=, from =products_rpc=.
+
+If successful, the response will be to return the id from the product deleted.
+
+#+begin_src python
+@http(
+    "DELETE", "/products/<string:product_id>",
+    expected_exceptions=ProductNotFound
+)
+def delete_product(self, request, product_id):
+    """Gets product by `product_id` and delete it
+    """
+
+    # ------- Delete the product
+    self.products_rpc.delete(product_id)
+
+    # Respond with the product_id -- means it was a successeful a call
+    return Response(
+        ProductSchema().dumps({'id': product_id}).data,
+        mimetype='application/json'
+    )
+#+end_src
+
+We write the =StorageWrapper= method for the client,
+#+begin_src python
+def delete(self, product_id):
+    product = self.client.hgetall(self._format_key(product_id))
+    self.client.delete(product_id)
+
+    if not product:
+        raise NotFound('Product ID {} does not exist'.format(product_id))
+    else:
+        return self._from_hash(product)
+#+end_src
+
+Also, we increment the =delete= method, in the server, located in =products/products/service.py= - Line 33,
+#+begin_src python
+@rpc
+def delete(self, product_id):
+    self.storage.delete(product_id)
+#+end_src
+
+*** DONE Wire =delete-product= into [[file:test/nex-smoketest.sh][nex-smoketest.sh]] (2)
+The command to smoketest is:
+#+begin_src bash
+./test/nex-smoketest.sh local
+#+end_src
+
+And thus we add these lines to the bash script, in order to cover deleting a product.
+#+begin_src bash
+# Test: Delete Product
+echo "=== Deleting product ==="
+curl -s -X "DELETE" "${STD_APP_URL}/products/the_odyssey"
+echo
+#+end_src
+
+Returns the text: ={"id": "the_odyssey"}=.
+
+*** STRT Wire into =perf-test= (2)
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+#+begin_src bash
+./test/nex-bzt.sh local
+#+end_src
+*** STRT Wire unit-test for this method
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+** TODO Orders Service
+#+begin_quote
+1. Enhance order service
+2. List orders rpc call
+3. Wire into smoketest.sh
+4. Wire into perf-test
+5. Wire unit-test for this method
+#+end_quote
+*** TODO =List-orders= rpc call
+*** TODO  Wire into smoketest.sh
+*** TODO Wire into perf-test
+*** TODO Wire unit-test for this method
 * TODO Tasks
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
 * TODO Side-notes
