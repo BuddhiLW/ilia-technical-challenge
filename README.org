@@ -184,10 +184,10 @@ link: https://a.blazemeter.com/app/?public-token=vRqk9enPpD9w6S2t9n3IxN8FJ2O8P5H
 #+ATTR_HTML: :width 1000px
 [[file:doc-stuff/img/deletion-performance.png]]
 
-#+ATTR_HTML: :width 500px
+#+ATTR_HTML: :width 1000px
 [[file:doc-stuff/img/deletion-performance2.png]]
 
-*** DONE Wire unit-test for this method
+*** DONE Wire unit-test for this method (2)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
 
 Add =TestDeleteProduct= class in =gateway/test/interface/test_service.py= - Line 296
@@ -219,30 +219,75 @@ The corresponding execution passes *100%* of the time, with a deprecation warnin
 [[file:doc-stuff/img/product-deletion-unit-test.png]]
 
 ** TODO Orders Service
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
 #+begin_quote
 1. Enhance order service
-2. List orders rpc call
-3. Wire into smoketest.sh
-4. Wire into perf-test
-5. Wire unit-test for this method
+   - List orders rpc call
+   - Wire into smoketest.sh
+   - Wire into perf-test
+   - Wire unit-test for this method
 #+end_quote
-*** TODO =List-orders= rpc call
+*** DONE =List-orders= rpc call
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+**** Gateway service implementation
+Create the server response to =GET= call without =id= specification.
 
-In =orders/orders/service=,
+In, =gateway/gateway/service.py=,
 
 #+begin_src python
+# ------ Get all orders
+@http("GET", "/orders/", expected_exceptions=EmptyOrders)
+def get_orders(self, request):
+    """Gets the order details for all orders."""
+
+    orders = self._get_orders()
+    return Response(
+        GetOrderSchema().dumps(orders, many=True).data, mimetype="application/json"
+    )
+
+def _get_orders(self):
+    # Retrieve all orders data, from the orders_rpc service.
+    return self.orders_rpc.get_orders()
+#+end_src
+
+**** Implement =EmptyOrders= exception
+Create =EmptyOrders= exception, in =gateway/gateway/exceptions.py=:
+#+begin_src python
+@remote_error("orders.exceptions.NotFound")
+class EmptyOrders(Exception):
+    """
+    When no order has been found
+    """
+
+    pass
+#+end_src
+
+**** List orders rpc call
+In =orders/orders/service=, we specify the =orders_rpc= method =get_orders= that corresponds to *list-orders*
+
+#+begin_src python
+# feature: Get all orders
 @rpc
-def list_orders(self):
+def get_orders(self):
     orders = self.db.query(Order)
-    print("orders: ", orders)
 
     if not orders:
-        raise NotFound('No orders found'.format(orders))
+        raise NotFound("No orders found".format(orders))
 
     return OrderSchema().dump(orders).data
 #+end_src
 
-*** TODO  Wire into smoketest.sh
+*** DONE Wire into smoketest.sh
+
+#+begin_src bash
+# Test: Get All Orders
+echo "=== Gerring All Orders ==="
+curl -s "${STD_APP_URL}/orders/" | jq .
+#+end_src
+
+#+ATTR_HTML: :width 300px
+[[file:doc-stuff/img/list-all-smoketest.png]]
+
 *** TODO Wire into perf-test
 *** TODO Wire unit-test for this method
 * TODO Tasks
@@ -261,8 +306,11 @@ The following requirements can be seen completed in sections:
 - [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
 - [[*Running the application][Running the application]]
 
+** Related to Emacs
+*** Setup for LSP Pyright, =pyproject.yaml=:
 
-Setup for LSP Pyright, =pyproject.yaml=:
+This file would give issues with =unit-testing=. But, it would be the right configuration for =Pyright (LSP)=.
+
 #+begin_src yaml
 # Based on the template for pyright(LSP):
 # - https://microsoft.github.io/pyright/#/getting-started

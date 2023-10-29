@@ -276,10 +276,6 @@ class TestDeleteProduct(object):
         assert gateway_service.products_rpc.delete.call_args_list == [
             call("the_odyssey")
         ]
-        # assert response.json() == "{}"
-        # {
-        #     "id": "the_odyssey",
-        # }
 
     def test_product_not_found(self, gateway_service, web_session):
         gateway_service.products_rpc.delete.side_effect = ProductNotFound("missing")
