@@ -66,13 +66,13 @@ DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-27 Fri>
 ** DONE Product Service
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
-#+begin_src
-2. Enhance product service
-- Delete product rpc call
-- Wire into smoketest.sh
-- Wire into perf-test
-- Wire unit-test for this method
-#+end_src
+#+begin_quote
+1. Enhance product service
+2. Delete product rpc call
+3. Wire into smoketest.sh
+4. Wire into perf-test
+5. Wire unit-test for this method
+#+end_quote
 
 *** DONE =Delete-product= rpc call (2)
 In [[file:products/products/service.py][products/products/service.py]], p.38.
@@ -99,8 +99,8 @@ def delete_product(self, request, product_id):
 
     # Respond with the product_id -- means it was a successeful a call
     return Response(
-        ProductSchema().dumps({'id': product_id}).data,
-        mimetype='application/json',
+        # ProductSchema().dumps({'id': product_id}).data,
+        # mimetype='application/json',
         status=204
     )
 #+end_src
@@ -134,14 +134,17 @@ And thus we add these lines to the bash script, in order to cover deleting a pro
 #+begin_src bash
 # Test: Delete Product
 echo "=== Deleting product ==="
-curl -s -X "DELETE" "${STD_APP_URL}/products/the_odyssey"
+RESPONSE=$(curl -s -X "DELETE" "${STD_APP_URL}/products/the_odyssey")
+
+if [ "${RESPONSE}" = "" ]; then
+    echo "Successeful deletion"
+else
+    echo "Error: ${RESPONSE}"
+fi
 echo
 #+end_src
 
-Returns the text: ={"id": "the_odyssey"}=.
-
-#+ATTR_HTML: :width 500px
-[[file:doc-stuff/img/product-deletion-operation.png]]
+Returns an empty body, but with =204= header.
 
 *** DONE Wire into =perf-test= (2)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
@@ -174,6 +177,16 @@ Therefore, inserting the following test-case in the file =test/nex-bzt.yml= - Li
         - action: continue
 #+end_src
 
+And, we can see that the deletion has uniform performance, as expected =O(0)=. It bumps up, by =user-quantity=, but remains constant in that level, for each =user-quantity= (*in pink*).
+
+link: https://a.blazemeter.com/app/?public-token=vRqk9enPpD9w6S2t9n3IxN8FJ2O8P5HzAWHfGEfZsajlartbRZ#reports/r-ext-653ea3ec2d196637735670/summary
+
+#+ATTR_HTML: :width 1000px
+[[file:doc-stuff/img/deletion-performance.png]]
+
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/deletion-performance2.png]]
+
 *** DONE Wire unit-test for this method
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
 
@@ -182,29 +195,28 @@ Add =TestDeleteProduct= class in =gateway/test/interface/test_service.py= - Line
 #+begin_src python
 class TestDeleteProduct(object):
     def test_can_delete_product(self, gateway_service, web_session):
-        gateway_service.products_rpc.delete.return_value = {
-            "id": "the_odyssey"
-        }
-        response = web_session.delete('/products/the_odyssey')
+        gateway_service.products_rpc.delete.return_value = ""
+        response = web_session.delete("/products/the_odyssey")
         assert response.status_code == 204
         assert gateway_service.products_rpc.delete.call_args_list == [
             call("the_odyssey")
         ]
-        assert response.json() == {
-            "id": "the_odyssey",
-        }
 
     def test_product_not_found(self, gateway_service, web_session):
-        gateway_service.products_rpc.delete.side_effect = (
-            ProductNotFound('missing'))
+        gateway_service.products_rpc.delete.side_effect = ProductNotFound("missing")
 
         # call the gateway service to get order #1
-        response = web_session.delete('/products/foo')
+        response = web_session.delete("/products/foo")
         assert response.status_code == 404
         payload = response.json()
-        assert payload['error'] == 'PRODUCT_NOT_FOUND'
-        assert payload['message'] == 'missing'
+        assert payload["error"] == "PRODUCT_NOT_FOUND"
+        assert payload["message"] == "missing"
 #+end_src
+
+The corresponding execution passes *100%* of the time, with a deprecation warning that has nothing to do with the new =feature-implementation= and =wiring=.
+
+#+ATTR_HTML: :width 1000px
+[[file:doc-stuff/img/product-deletion-unit-test.png]]
 
 ** TODO Orders Service
 #+begin_quote
@@ -215,6 +227,21 @@ class TestDeleteProduct(object):
 5. Wire unit-test for this method
 #+end_quote
 *** TODO =List-orders= rpc call
+
+In =orders/orders/service=,
+
+#+begin_src python
+@rpc
+def list_orders(self):
+    orders = self.db.query(Order)
+    print("orders: ", orders)
+
+    if not orders:
+        raise NotFound('No orders found'.format(orders))
+
+    return OrderSchema().dump(orders).data
+#+end_src
+
 *** TODO  Wire into smoketest.sh
 *** TODO Wire into perf-test
 *** TODO Wire unit-test for this method
@@ -233,3 +260,78 @@ DEADLINE: <2023-11-01 Wed> SCHEDULED: <2023-10-26 Thu>
 The following requirements can be seen completed in sections:
 - [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
 - [[*Running the application][Running the application]]
+
+
+Setup for LSP Pyright, =pyproject.yaml=:
+#+begin_src yaml
+# Based on the template for pyright(LSP):
+# - https://microsoft.github.io/pyright/#/getting-started
+# - https://microsoft.github.io/pyright/#/configuration
+
+{
+  "include": [
+    "orders",
+    "products",
+    "test",
+    "gateapi",
+    "gateway",
+  ],
+
+  "exclude": [
+    "**/__pycache__",
+    # From template
+    # "**/node_modules",
+    # "src/experimental",
+    # "src/typestubs"
+  ],
+
+  "ignore": [
+    # From template
+    # "src/oldstuff"
+  ],
+
+  "defineConstant": {
+    "DEBUG": true
+  },
+
+  "stubPath": "src/stubs",
+  "venv": "env367",
+
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": true, # default: false
+
+  "pythonVersion": "3.7.12",
+  "pythonPlatform": "Linux",
+
+  "executionEnvironments": [
+    {
+      "root": "./" # default: "src/"
+    }
+    # {
+    #   "root": "src/web",
+    #   "pythonVersion": "3.7.12",
+    #   "pythonPlatform": "Linux", # default: Windows
+    #   "extraPaths": [
+    #     # From template
+    #     # "src/service_libs"
+    #   ]
+    # },
+    # {
+    #   "root": "orders",
+    #   "pythonVersion": "3.7.12",
+    #   "extraPaths": [
+    #     "orders/alembic",
+    #     "orders/orders",
+    #     "orders/test"
+    #   ]
+    # },
+    # {
+    #   "root": "test",
+    #   "extraPaths": [
+    #     # "src/tests/e2e",
+    #     # "src/sdk"
+    #   ]
+    # },
+  ]
+}
+#+end_src

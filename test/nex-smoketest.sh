@@ -53,8 +53,13 @@ ID=$(echo ${ORDER_ID} | jq '.id')
 echo "=== Getting Order ==="
 curl -s "${STD_APP_URL}/orders/${ID}" | jq .
 
-
 # Test: Delete Product
 echo "=== Deleting product ==="
-curl -s -X "DELETE" "${STD_APP_URL}/products/the_odyssey"
+RESPONSE=$(curl -s -X "DELETE" "${STD_APP_URL}/products/the_odyssey")
+
+if [ "${RESPONSE}" = "" ]; then
+    echo "Successeful deletion"
+else
+    echo "Error: ${RESPONSE}"
+fi
 echo

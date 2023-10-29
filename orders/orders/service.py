@@ -66,3 +66,13 @@ class OrdersService:
         order = self.db.query(Order).get(order_id)
         self.db.delete(order)
         self.db.commit()
+
+    @rpc
+    def list_orders(self):
+        orders = self.db.query(Order)
+        print("orders: ", orders)
+
+        if not orders:
+            raise NotFound('No orders found'.format(orders))
+
+        return OrderSchema().dump(orders).data
