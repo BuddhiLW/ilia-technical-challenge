@@ -75,7 +75,7 @@ class OrdersService:
     def get_orders(self):
         orders = self.db.query(Order).all()
 
-        if not orders:
+        if len(orders) == 0:
             raise NotFound("No orders found")
-
-        return OrderSchema().dump(orders, many=True).data
+        else:
+            return OrderSchema().dump(orders, many=True).data

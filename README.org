@@ -19,11 +19,11 @@ It will create the =conda= environment =nameko-devex=
 #+begin_quote
 To activate this environment, use
 
-    $ conda activate nameko-devex
+$ conda activate nameko-devex
 
 To deactivate an active environment, use
 
-    $ conda deactivate
+$ conda deactivate
 #+end_quote
 
 Finally, the script will
@@ -62,18 +62,18 @@ DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-27 Fri>
 #+ATTR_HTML: :width 1000px
 [[file:doc-stuff/img/performance-test.png]]
 
-* TODO Features
+* DONE Features (2, 3)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-27 Fri>
-** DONE Product Service
+** DONE Product Service (2)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
-#+begin_quote
-1. Enhance product service
-2. Delete product rpc call
-3. Wire into smoketest.sh
-4. Wire into perf-test
-5. Wire unit-test for this method
-#+end_quote
-
+    #+begin_quote
+    2. Enhance product service
+    - Delete product rpc call
+    - Wire into smoketest-sh
+    - Wire into perf-test
+    - Wire unit-test for this method
+    #+end_quote
+         
 *** DONE =Delete-product= rpc call (2)
 In [[file:products/products/service.py][products/products/service.py]], p.38.
 
@@ -164,17 +164,17 @@ Therefore, inserting the following test-case in the file =test/nex-bzt.yml= - Li
       method: DELETE
 
       assert:
-      - contains:
-        - 204
-        subject: http-code
-        not: false
-      extract-jsonpath:
-        product_key: $.id
-        default: NOT_FOUND
+        - contains:
+            - 204
+            subject: http-code
+            not: false
+            extract-jsonpath:
+              product_key: $.id
+              default: NOT_FOUND
 
-    - if: '"${order_id}" == "NOT_FOUND"'
-      then:
-        - action: continue
+              - if: '"${order_id}" == "NOT_FOUND"'
+                then:
+                  - action: continue
 #+end_src
 
 And, we can see that the deletion has uniform performance, as expected =O(0)=. It bumps up, by =user-quantity=, but remains constant in that level, for each =user-quantity= (*in pink*).
@@ -218,18 +218,20 @@ The corresponding execution passes *100%* of the time, with a deprecation warnin
 #+ATTR_HTML: :width 1000px
 [[file:doc-stuff/img/product-deletion-unit-test.png]]
 
-** TODO Orders Service
+** DONE Orders Service (3)
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+
 #+begin_quote
-1. Enhance order service
-   - List orders rpc call
-   - Wire into smoketest.sh
-   - Wire into perf-test
-   - Wire unit-test for this method
+3. Enhance order service
+  - List orders rpc call
+  - Wire into smoketest.sh
+  - Wire into perf-test
+  - Wire unit-test for this method
 #+end_quote
+
 *** DONE =List-orders= rpc call
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
-**** Gateway service implementation
+**** DONE Gateway service implementation
 Create the server response to =GET= call without =id= specification.
 
 In, =gateway/gateway/service.py=,
@@ -250,7 +252,7 @@ def _get_orders(self):
     return self.orders_rpc.get_orders()
 #+end_src
 
-**** Implement =EmptyOrders= exception
+**** DONE Implement =EmptyOrders= exception
 Create =EmptyOrders= exception, in =gateway/gateway/exceptions.py=:
 #+begin_src python
 @remote_error("orders.exceptions.NotFound")
@@ -262,19 +264,19 @@ class EmptyOrders(Exception):
     pass
 #+end_src
 
-**** List orders rpc call
+**** DONE List orders rpc call
 In =orders/orders/service=, we specify the =orders_rpc= method =get_orders= that corresponds to *list-orders*
 
 #+begin_src python
 # feature: Get all orders
 @rpc
 def get_orders(self):
-    orders = self.db.query(Order)
+    orders = self.db.query(Order).all()
 
-    if not orders:
-        raise NotFound("No orders found".format(orders))
-
-    return OrderSchema().dump(orders).data
+    if len(orders) == 0:
+        raise NotFound("No orders found")
+    else:
+        return OrderSchema().dump(orders, many=True).data
 #+end_src
 
 *** DONE Wire into smoketest.sh
@@ -288,8 +290,62 @@ curl -s "${STD_APP_URL}/orders/" | jq .
 #+ATTR_HTML: :width 300px
 [[file:doc-stuff/img/list-all-smoketest.png]]
 
-*** TODO Wire into perf-test
-*** TODO Wire unit-test for this method
+*** DONE Wire into perf-test
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+
+Add =List All Orders= case, with the =list-orders= label, in =next-bzt.yml=,
+#+begin_src yml
+    # 6. List All Orders
+    - url: /orders
+      label: list-orders
+      think-time: uniform(0s, 0s)
+      method: GET
+
+      assert:
+      - contains:
+        - 200
+        subject: http-code
+        not: false
+      extract-jsonpath:
+        default: NOT_FOUND
+#+end_src
+
+Link: 
+https://a.blazemeter.com/app/?public-token=6kcJWXU5rUh81DVuWHK3PCwHVlffoJN5iV98vIUdJWRr5FVtXb#/accounts/-1/workspaces/-1/projects/-1/sessions/r-ext-653ee23e634bf313148657/summary
+
+#+ATTR_HTML: :width 1200px
+[[file:doc-stuff/img/list-perf-test.png]]
+
+The purple line gives us almost a constant speed, over time and user numbers, because it should only be porportional to the time o =access-memory= time. Which, thus, makes sense.
+
+*** DONE Wire unit-test for this method
+DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-29 Sun>
+
+In =orders/test/interface/test_service.py=, we can add these assertions to test if the =list-orders= feature is working as supposed to.
+
+Let's create 10 orders, first. Then, test for two things:
+- Does the =list-all= method will return a list of length 10?
+- Are the orders actually in the db?
+
+#+begin_src python
+@pytest.mark.usefixtures("db_session")
+def test_list_all_orders(orders_rpc, db_session):
+    order_details = [
+        {"product_id": "the_odyssey", "price": 99.99, "quantity": 1},
+        {"product_id": "the_enigma", "price": 5.99, "quantity": 8},
+    ]
+
+    for _ in range(10):
+        orders_rpc.create_order(OrderDetailSchema(many=True).dump(order_details).data)
+
+    response = orders_rpc.get_orders()
+    assert len(response) == 10
+    assert len(response) == len(db_session.query(Order).all())
+#+end_src
+
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/orders-unit-test.png]]
+
 * TODO Tasks
 DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
 * TODO Side-notes
@@ -317,29 +373,29 @@ This file would give issues with =unit-testing=. But, it would be the right conf
 # - https://microsoft.github.io/pyright/#/configuration
 
 {
-  "include": [
-    "orders",
-    "products",
-    "test",
-    "gateapi",
-    "gateway",
-  ],
+"include": [
+"orders",
+"products",
+"test",
+"gateapi",
+"gateway",
+],
 
-  "exclude": [
-    "**/__pycache__",
-    # From template
-    # "**/node_modules",
-    # "src/experimental",
-    # "src/typestubs"
-  ],
+"exclude": [
+"**/__pycache__",
+# From template
+# "**/node_modules",
+# "src/experimental",
+# "src/typestubs"
+],
 
-  "ignore": [
-    # From template
-    # "src/oldstuff"
-  ],
+"ignore": [
+# From template
+# "src/oldstuff"
+],
 
-  "defineConstant": {
-    "DEBUG": true
+"defineConstant": {
+  "DEBUG": true
   },
 
   "stubPath": "src/stubs",
@@ -352,34 +408,34 @@ This file would give issues with =unit-testing=. But, it would be the right conf
   "pythonPlatform": "Linux",
 
   "executionEnvironments": [
-    {
-      "root": "./" # default: "src/"
-    }
-    # {
-    #   "root": "src/web",
-    #   "pythonVersion": "3.7.12",
-    #   "pythonPlatform": "Linux", # default: Windows
-    #   "extraPaths": [
-    #     # From template
-    #     # "src/service_libs"
-    #   ]
-    # },
-    # {
-    #   "root": "orders",
-    #   "pythonVersion": "3.7.12",
-    #   "extraPaths": [
-    #     "orders/alembic",
-    #     "orders/orders",
-    #     "orders/test"
-    #   ]
-    # },
-    # {
-    #   "root": "test",
-    #   "extraPaths": [
-    #     # "src/tests/e2e",
-    #     # "src/sdk"
-    #   ]
-    # },
+  {
+  "root": "./" # default: "src/"
+  }
+  # {
+  #   "root": "src/web",
+  #   "pythonVersion": "3.7.12",
+  #   "pythonPlatform": "Linux", # default: Windows
+  #   "extraPaths": [
+  #     # From template
+  #     # "src/service_libs"
+  #   ]
+  # },
+  # {
+  #   "root": "orders",
+  #   "pythonVersion": "3.7.12",
+  #   "extraPaths": [
+  #     "orders/alembic",
+  #     "orders/orders",
+  #     "orders/test"
+  #   ]
+  # },
+  # {
+  #   "root": "test",
+  #   "extraPaths": [
+  #     # "src/tests/e2e",
+  #     # "src/sdk"
+  #   ]
+  # },
   ]
-}
+  }
 #+end_src
