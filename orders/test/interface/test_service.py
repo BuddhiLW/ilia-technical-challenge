@@ -104,7 +104,6 @@ def order_details(db_session, order):
     return order_details
 
 
-@pytest.mark.usefixtures("db_session")
 def test_list_all_orders(orders_rpc, db_session):
     order_details = [
         {"product_id": "the_odyssey", "price": 99.99, "quantity": 1},
@@ -114,6 +113,6 @@ def test_list_all_orders(orders_rpc, db_session):
     for _ in range(10):
         orders_rpc.create_order(OrderDetailSchema(many=True).dump(order_details).data)
 
-    response = orders_rpc.get_orders()
+    response = orders_rpc.list_orders()
     assert len(response) == 10
     assert len(response) == len(db_session.query(Order).all())

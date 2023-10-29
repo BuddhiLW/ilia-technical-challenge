@@ -345,13 +345,26 @@ def test_list_all_orders(orders_rpc, db_session):
 
 #+ATTR_HTML: :width 500px
 [[file:doc-stuff/img/orders-unit-test.png]]
+* TODO Execute performance test (4)
+DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
+#+begin_quote
+- Question 1: Why is performance degrading as the test runs longer ?
+- Question 2: How do you fix it ?
+- Fix the performance issue.
+#+end_quote
 
-* TODO Tasks
-DEADLINE: <2023-10-29 Sun> SCHEDULED: <2023-10-28 Sat>
-* TODO Side-notes
+** TODO Why is performance degrading as the test runs longer? (Q1)
+DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
+
+** TODO How do you fix it? (Q2)
+DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
+
+** TODO Fix the performance issue
+DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
+
+* Side-notes
 DEADLINE: <2023-11-01 Wed> SCHEDULED: <2023-10-26 Thu>
 ** Technical exercises responses
-
 *** Follow README-DevEnv.md to setup dev environment for exercise
 #+begin_quote
 - Able to run locally, debug, unit-test
@@ -362,6 +375,7 @@ The following requirements can be seen completed in sections:
 - [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
 - [[*Running the application][Running the application]]
 
+  
 ** Related to Emacs
 *** Setup for LSP Pyright, =pyproject.yaml=:
 

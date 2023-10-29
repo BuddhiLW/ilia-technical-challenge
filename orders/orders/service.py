@@ -72,10 +72,6 @@ class OrdersService:
 
     # feature: Get all orders
     @rpc
-    def get_orders(self):
-        orders = self.db.query(Order).all()
-
-        if len(orders) == 0:
-            raise NotFound("No orders found")
-        else:
-            return OrderSchema().dump(orders, many=True).data
+    def list_orders(self):
+        orders = list(self.db.query(Order).all())
+        return OrderSchema().dump(orders, many=True).data

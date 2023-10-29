@@ -176,15 +176,11 @@ class GatewayService(object):
         return result["id"]
 
     # ------ Get all orders
-    @http("GET", "/orders/", expected_exceptions=EmptyOrders)
-    def get_orders(self, request):
+    @http("GET", "/orders", expected_exceptions=EmptyOrders)
+    def list_orders(self, request):
         """Gets the order details for all orders."""
 
-        orders = self._get_orders()
+        orders = list(self.orders_rpc.list_orders())
         return Response(
             GetOrderSchema().dumps(orders, many=True).data, mimetype="application/json"
         )
-
-    def _get_orders(self):
-        # Retrieve all orders data, from the orders_rpc service.
-        return self.orders_rpc.get_orders()

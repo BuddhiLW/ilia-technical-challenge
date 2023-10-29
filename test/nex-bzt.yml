@@ -139,8 +139,6 @@ scenarios:
         - 200
         subject: http-code
         not: false
-      extract-jsonpath:
-        default: NOT_FOUND
 
 reporting:
 - module: final-stats
