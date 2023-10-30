@@ -1,5 +1,7 @@
 #+title: Notes on the challenge
 
+The answer to the problems 1 to 4 can be read in the respective tag a section is dedicated to. I.e., Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1), etc.
+
 * DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1)
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-26 Thu>
 ** DONE Installation
@@ -441,93 +443,3 @@ And, this is the side-to-side comparison of =get-order=, for example:
 [[file:doc-stuff/img/execution-time-comparison-get-order.png]]
 
 The before and after, from left to right. We see the performance is now much more attached, one-to-one with the number of =hits= / =requests= at a given time, instead of accumulating over executions.
-* Side-notes
-DEADLINE: <2023-11-01 Wed> SCHEDULED: <2023-10-26 Thu>
-** Technical exercises responses
-*** Follow README-DevEnv.md to setup dev environment for exercise
-#+begin_quote
-- Able to run locally, debug, unit-test
-- Able to smoke-test and performance test
-#+end_quote
-
-The following requirements can be seen completed in sections:
-- [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
-- [[*Running the application][Running the application]]
-
-** Related to Emacs
-*** Setup for LSP Pyright, =pyproject.yaml=:
-
-This file would give issues with =unit-testing=. But, it would be the right configuration for =Pyright (LSP)=.
-
-#+begin_src yaml
-# Based on the template for pyright(LSP):
-# - https://microsoft.github.io/pyright/#/getting-started
-# - https://microsoft.github.io/pyright/#/configuration
-
-{
-"include": [
-"orders",
-"products",
-"test",
-"gateapi",
-"gateway",
-],
-
-"exclude": [
-"**/__pycache__",
-# From template
-# "**/node_modules",
-# "src/experimental",
-# "src/typestubs"
-],
-
-"ignore": [
-# From template
-# "src/oldstuff"
-],
-
-"defineConstant": {
-  "DEBUG": true
-  },
-
-  "stubPath": "src/stubs",
-  "venv": "env367",
-
-  "reportMissingImports": true,
-  "reportMissingTypeStubs": true, # default: false
-
-  "pythonVersion": "3.7.12",
-  "pythonPlatform": "Linux",
-
-  "executionEnvironments": [
-  {
-  "root": "./" # default: "src/"
-  }
-  # {
-  #   "root": "src/web",
-  #   "pythonVersion": "3.7.12",
-  #   "pythonPlatform": "Linux", # default: Windows
-  #   "extraPaths": [
-  #     # From template
-  #     # "src/service_libs"
-  #   ]
-  # },
-  # {
-  #   "root": "orders",
-  #   "pythonVersion": "3.7.12",
-  #   "extraPaths": [
-  #     "orders/alembic",
-  #     "orders/orders",
-  #     "orders/test"
-  #   ]
-  # },
-  # {
-  #   "root": "test",
-  #   "extraPaths": [
-  #     # "src/tests/e2e",
-  #     # "src/sdk"
-  #   ]
-  # },
-  ]
-  }
-#+end_src
