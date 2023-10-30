@@ -359,7 +359,7 @@ Let's execute the performance test once again.
 ./test/nex-bzt.sh local
 #+end_src
 
-#+RESULTS: https://a.blazemeter.com/app/?public-token=w8ReaRiTEV6quhuRCpJWszuikIqeTH4uQalaF0vSZgkEI1MxP6#reports/r-ext-653fb211b17ab737942637/summary
+Result: https://a.blazemeter.com/app/?public-token=w8ReaRiTEV6quhuRCpJWszuikIqeTH4uQalaF0vSZgkEI1MxP6#reports/r-ext-653fb211b17ab737942637/summary
 
 #+ATTR_HTML: :width 500px
 [[file:doc-stuff/img/performance-test-4step.png]]
