@@ -348,16 +348,76 @@ def test_list_all_orders(orders_rpc, db_session):
 * TODO Execute performance test (4)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 #+begin_quote
-- Question 1: Why is performance degrading as the test runs longer ?
-- Question 2: How do you fix it ?
+- Question 1: Why is performance degrading as the test runs longer?
+- Question 2: How do you fix it?
 - Fix the performance issue.
 #+end_quote
 
-** TODO Why is performance degrading as the test runs longer? (Q1)
+Let's execute the performance test once again.
+
+#+begin_src bash
+./test/nex-bzt.sh local
+#+end_src
+
+#+RESULTS: https://a.blazemeter.com/app/?public-token=w8ReaRiTEV6quhuRCpJWszuikIqeTH4uQalaF0vSZgkEI1MxP6#reports/r-ext-653fb211b17ab737942637/summary
+
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/performance-test-4step.png]]
+
+** DONE Why is performance degrading as the test runs longer? (Q1)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 
-** TODO How do you fix it? (Q2)
+Analyzing the =response-time= chart over time. In this test-scenario, =time= (*t*) is directly proportional to =quantity of orders= (*No*).
+
+We see that the operations =order-get=, =order-create= and =list-orders= seem to linearly correlate to the =quantity of orders= (*No*).
+
+That is to say that these *search* and *insertion* algorithms employed do not represent an optimal solution, since it's well-known that both operations can be =O(log(n)=, in a balanced /binary search tree/ (BST) - which can be a python dictionary.
+
+#+ATTR_HTML: :width 1300px
+[[file:doc-stuff/img/chart-execution-time-non-optimal.png]]
+
+** DONE How do you fix it? (Q2)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
+
+One solution would be to implement the same storage of data with a different *data structure*. In other words, one could solve this problem by representing the same data with a different /data structure/, so the *search* and *insertion* operations be =O(log(n))=.
+
+Another solution would be to implement a *binary search* in the *list of objects*, instead of a linear search.
+
+Currently, the aggregate of orders has a stored-representation of a *list of objects*.
+
+*** My solution
+I will do the following: instead of a order be an object with the entries ="order_details"= and ="id"=, as shown following.
+
+#+begin_src python
+{
+"order_details": [
+    {
+    "price": "100000.99",
+    "product_id": "the_odyssey",
+    "quantity": 1,
+    "id": 833
+    }
+],
+"id": 833
+}
+#+end_src
+
+The new data representation will be as an object with =key= being the =string of the value of the id-key=. And the =value= being the original representation of the =object=. As seen following.
+
+#+begin_src python
+{"833" : {
+          "order_details": [
+              {
+              "price": "100000.99",
+              "product_id": "the_odyssey",
+              "quantity": 1,
+              "id": 833
+              }
+          ],
+          "id": 833}}
+#+end_src
+
+Thus, we can represent all orders as an object, in which each =key-value= is unique and represent an *order*. Following, the *search* and *insertion* in this data structure is =O(ln(n))=.
 
 ** TODO Fix the performance issue
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>

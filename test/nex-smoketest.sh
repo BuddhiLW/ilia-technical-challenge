@@ -66,4 +66,4 @@ echo
 
 # Test: Get All Orders
 echo "=== Getting All Orders ==="
-curl -s --get "${STD_APP_URL}/orders/" | jq .
+curl -s --get "${STD_APP_URL}/orders" | jq .
