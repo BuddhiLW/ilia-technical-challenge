@@ -1,7 +1,5 @@
 #+title: Notes on the challenge
 
-*The deadline is 10h, 01/11/2023*
-
 * DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1)
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-26 Thu>
 ** DONE Installation
@@ -345,7 +343,7 @@ def test_list_all_orders(orders_rpc, db_session):
 
 #+ATTR_HTML: :width 500px
 [[file:doc-stuff/img/orders-unit-test.png]]
-* TODO Execute performance test (4)
+* DONE Execute performance test (4)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 #+begin_quote
 - Question 1: Why is performance degrading as the test runs longer?
@@ -367,6 +365,7 @@ Let's execute the performance test once again.
 ** DONE Why is performance degrading as the test runs longer? (Q1)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 
+*** Hypothesis number one - Data Structures
 Analyzing the =response-time= chart over time. In this test-scenario, =time= (*t*) is directly proportional to =quantity of orders= (*No*).
 
 We see that the operations =order-get=, =order-create= and =list-orders= seem to linearly correlate to the =quantity of orders= (*No*).
@@ -375,53 +374,73 @@ That is to say that these *search* and *insertion* algorithms employed do not re
 
 #+ATTR_HTML: :width 1300px
 [[file:doc-stuff/img/chart-execution-time-non-optimal.png]]
+*** Hypothesis number two - DB-Connections overhead (*Chosen explanation*)
+
+The session calls to connect to the database are actually accumulating over the calls. This increases, linearly-proportion to the number of calls, the overhead of the next call.
+
+This hypothesis seems the most plausible, over the fact, and the easiest to modify.
+
+Thus, the *solution* for fixing the performance will attack this hypothesis.
 
 ** DONE How do you fix it? (Q2)
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 
+*** Hypothetical Solution for hypothesis one
 One solution would be to implement the same storage of data with a different *data structure*. In other words, one could solve this problem by representing the same data with a different /data structure/, so the *search* and *insertion* operations be =O(log(n))=.
 
 Another solution would be to implement a *binary search* in the *list of objects*, instead of a linear search.
 
 Currently, the aggregate of orders has a stored-representation of a *list of objects*.
 
-*** My solution
-I will do the following: instead of a order be an object with the entries ="order_details"= and ="id"=, as shown following.
+*** Hypothetical Solution for hypothesis two (my solution)
+Reading the https://docs.sqlalchemy.org/ documentation, one finds that calling the =self.db.query()= is deprecated.
+
+And, one should opt for the following:
 
 #+begin_src python
-{
-"order_details": [
-    {
-    "price": "100000.99",
-    "product_id": "the_odyssey",
-    "quantity": 1,
-    "id": 833
-    }
-],
-"id": 833
-}
+db = Database(DeclarativeBase)
+
+def method(self, order_id):
+    with self.db_orders.get_session() as session:
+        # Operate on session here
 #+end_src
 
-The new data representation will be as an object with =key= being the =string of the value of the id-key=. And the =value= being the original representation of the =object=. As seen following.
+This approach will diminish the number of =alive sessions=. And, therefore, diminish the call-overhead for any operation.
 
-#+begin_src python
-{"833" : {
-          "order_details": [
-              {
-              "price": "100000.99",
-              "product_id": "the_odyssey",
-              "quantity": 1,
-              "id": 833
-              }
-          ],
-          "id": 833}}
-#+end_src
-
-Thus, we can represent all orders as an object, in which each =key-value= is unique and represent an *order*. Following, the *search* and *insertion* in this data structure is =O(ln(n))=.
-
-** TODO Fix the performance issue
+** DONE Fix the performance issue
 DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
 
+In =orders/orders/service.py=, I changed the =db= instance-declaration from:
+
+#+begin_src python
+db = DatabaseSession(DeclarativeBase)
+#+end_src
+
+To:
+#+begin_src python
+db_orders = Database(DeclarativeBase)
+#+end_src
+
+Also, in every occurrence of:
+#+begin_src python
+self.db.query(Order)*
+#+end_src
+
+I wrapped the section dealing with the =db=, with instead:
+#+begin_src python
+with self.db_orders.get_session() as session:
+    session.query(Order)*
+#+end_src
+
+*** Results
+The final report can be found at: https://a.blazemeter.com/app/?public-token=OUr335F30q95J2p1NNPSeZl83TvufXg75DgE7OIKMjgTqrcKpf#reports/r-ext-6540212b57597553416121/summary
+
+And, this is the side-to-side comparison of =get-order=, for example:
+
+#+ATTR_HTML: :width 1200px
+[[file:doc-stuff/img/execution-time-comparison-get-order.png]]
+
+The before and after, from left to right. We see the performance is now much more attached, one-to-one with the number of =hits= / =requests= at a given time, instead of accumulating over executions.
 * Side-notes
 DEADLINE: <2023-11-01 Wed> SCHEDULED: <2023-10-26 Thu>
 ** Technical exercises responses
@@ -435,7 +454,6 @@ The following requirements can be seen completed in sections:
 - [[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\]][Following README-DevEnv]]
 - [[*Running the application][Running the application]]
 
-  
 ** Related to Emacs
 *** Setup for LSP Pyright, =pyproject.yaml=:
 

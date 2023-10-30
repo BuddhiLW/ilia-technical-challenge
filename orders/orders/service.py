@@ -1,52 +1,56 @@
 from nameko.events import EventDispatcher
 from nameko.rpc import rpc
-from nameko_sqlalchemy import DatabaseSession
+from nameko_sqlalchemy import DatabaseSession, Database
 
 from orders.exceptions import NotFound
-from orders.models import DeclarativeBase, Order, OrderDetail
+from orders.models import DeclarativeBase, Order, OrderDetail  # , Orders
 from orders.schemas import OrderSchema
 
 
 class OrdersService:
     name = "orders"
 
-    db = DatabaseSession(DeclarativeBase)
+    # db = DatabaseSession(DeclarativeBase)
+    db_orders = Database(DeclarativeBase)
     event_dispatcher = EventDispatcher()
 
     @rpc
     def get_order(self, order_id):
-        order = self.db.query(Order).get(order_id)
+        with self.db_orders.get_session() as session:
+            order = session.query(Order).get(order_id)
 
-        if not order:
-            raise NotFound("Order with id {} not found".format(order_id))
+            if not order:
+                raise NotFound("Order with id {} not found".format(order_id))
 
-        return OrderSchema().dump(order).data
+            return OrderSchema().dump(order).data
 
     @rpc
     def create_order(self, order_details):
-        order = Order(
-            order_details=[
-                OrderDetail(
-                    product_id=order_detail["product_id"],
-                    price=order_detail["price"],
-                    quantity=order_detail["quantity"],
-                )
-                for order_detail in order_details
-            ]
-        )
-        self.db.add(order)
-        self.db.commit()
+        with self.db_orders.get_session() as session:
+            order = Order(
+                order_details=[
+                    OrderDetail(
+                        product_id=order_detail["product_id"],
+                        price=order_detail["price"],
+                        quantity=order_detail["quantity"],
+                    )
+                    for order_detail in order_details
+                ]
+            )
 
-        order = OrderSchema().dump(order).data
+            session.add(order)
+            session.commit()
 
-        self.event_dispatcher(
-            "order_created",
-            {
-                "order": order,
-            },
-        )
+            order = OrderSchema().dump(order).data
 
-        return order
+            self.event_dispatcher(
+                "order_created",
+                {
+                    "order": order,
+                },
+            )
+
+            return order
 
     @rpc
     def update_order(self, order):
@@ -54,24 +58,27 @@ class OrdersService:
             order_details["id"]: order_details
             for order_details in order["order_details"]
         }
+        with self.db_orders.get_session() as session:
+            order = session.query(Order).get(order["id"])
 
-        order = self.db.query(Order).get(order["id"])
+            for order_detail in order.order_details:
+                order_detail.price = order_details[order_detail.id]["price"]
+                order_detail.quantity = order_details[order_detail.id]["quantity"]
 
-        for order_detail in order.order_details:
-            order_detail.price = order_details[order_detail.id]["price"]
-            order_detail.quantity = order_details[order_detail.id]["quantity"]
+            session.commit()
 
-        self.db.commit()
-        return OrderSchema().dump(order).data
+            return OrderSchema().dump(order).data
 
     @rpc
     def delete_order(self, order_id):
-        order = self.db.query(Order).get(order_id)
-        self.db.delete(order)
-        self.db.commit()
+        with self.db_orders.get_session() as session:
+            order = session.query(Order).get(order_id)
+            session.delete(order)
+            session.commit()
 
     # feature: Get all orders
     @rpc
     def list_orders(self):
-        orders = list(self.db.query(Order).all())
-        return OrderSchema().dump(orders, many=True).data
+        with self.db_orders.get_session() as session:
+            orders = list(session.query(Order).all())
+            return OrderSchema().dump(orders, many=True).data
