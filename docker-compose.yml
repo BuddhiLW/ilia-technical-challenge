@@ -16,8 +16,8 @@ services:
   postgres:
     container_name: ${PREFIX}-nameko-example-postgres
     image: postgres
-    # ports:            # Uncomment both lines if you want to debug
-    #     - "5433:5432" # Exposing Postgres on different port for convenience
+    ports:            # Uncomment both lines if you want to debug
+        - "5433:5432" # Exposing Postgres on different port for convenience
     environment:
         POSTGRES_DB: "orders"
         POSTGRES_PASSWORD: "password"
@@ -62,7 +62,7 @@ services:
         - "rabbit:nameko-example-rabbitmq"
         - "postgres:nameko-example-postgres"
     environment:
-        DB_PASSWORD: "password"
+        DB_PASSWORD: "postgres"
         DB_USER: "postgres"
         DB_HOST: "postgres"
         DB_NAME: "orders"

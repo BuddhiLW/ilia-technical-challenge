@@ -1,14 +1,11 @@
+from nameko.rpc import config
+from sqlalchemy import Column, Integer, ForeignKey, DECIMAL, DateTime, Index
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 import datetime
 
-from sqlalchemy import (
-    DECIMAL,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy import create_engine, engine_from_config
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 class Base(object):
@@ -22,6 +19,7 @@ class Base(object):
 
 
 DeclarativeBase = declarative_base(cls=Base)
+DeclarativeBase.DB_URI = "postgres+psycopg2://postgres:postgres@localhost:5432/orders"
 
 
 class Order(DeclarativeBase):
@@ -41,3 +39,8 @@ class OrderDetail(DeclarativeBase):
     product_id = Column(Integer, nullable=False)
     price = Column(DECIMAL(18, 2), nullable=False)
     quantity = Column(Integer, nullable=False)
+
+
+# Add indexes to the columns that are frequently used in queries
+Index("order_details_product_id_idx", OrderDetail.product_id)
+Index("order_details_order_id_idx", OrderDetail.order_id)

@@ -72,10 +72,8 @@ def cache_create_order(func):
 
 
 # Create a Redis connection
-REDIS_URI_KEY = "REDIS_URI"
-redis_client = redis.StrictRedis(decode_responses=True).from_url(
-    config.get(REDIS_URI_KEY)
-)
+# REDIS_URI_KEY = "REDIS_URI"
+redis_client = redis.StrictRedis.from_url("redis://localhost:6379/dev")
 
 
 def cache_get_with_redis(func):

@@ -354,105 +354,7 @@ def test_list_all_orders(orders_rpc, db_session):
 
 #+ATTR_HTML: :width 500px
 [[file:doc-stuff/img/orders-unit-test.png]]
-* DONE Execute performance test (4)
-DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
-#+begin_quote
-- Question 1: Why is performance degrading as the test runs longer?
-- Question 2: How do you fix it?
-- Fix the performance issue.
-#+end_quote
-
-Let's execute the performance test once again.
-
-#+begin_src bash
-./test/nex-bzt.sh local
-#+end_src
-
-Result: https://a.blazemeter.com/app/?public-token=w8ReaRiTEV6quhuRCpJWszuikIqeTH4uQalaF0vSZgkEI1MxP6#reports/r-ext-653fb211b17ab737942637/summary
-
-#+ATTR_HTML: :width 500px
-[[file:doc-stuff/img/performance-test-4step.png]]
-
-** DONE Why is performance degrading as the test runs longer? (Q1)
-DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
-
-*** Hypothesis number one - Data Structures
-Analyzing the =response-time= chart over time. In this test-scenario, =time= (*t*) is directly proportional to =quantity of orders= (*No*).
-
-We see that the operations =order-get=, =order-create= and =list-orders= seem to linearly correlate to the =quantity of orders= (*No*).
-
-That is to say that these *search* and *insertion* algorithms employed do not represent an optimal solution, since it's well-known that both operations can be =O(log(n)=, in a balanced /binary search tree/ (BST) - which can be a python dictionary.
-
-#+ATTR_HTML: :width 1300px
-[[file:doc-stuff/img/chart-execution-time-non-optimal.png]]
-*** Hypothesis number two - DB-Connections overhead (*Chosen explanation*)
-
-The session calls to connect to the database are actually accumulating over the calls. This increases, linearly-proportion to the number of calls, the overhead of the next call.
-
-This hypothesis seems the most plausible, over the fact, and the easiest to modify.
-
-Thus, the *solution* for fixing the performance will attack this hypothesis.
-
-** DONE How do you fix it? (Q2)
-DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
-
-*** Hypothetical Solution for hypothesis one
-One solution would be to implement the same storage of data with a different *data structure*. In other words, one could solve this problem by representing the same data with a different /data structure/, so the *search* and *insertion* operations be =O(log(n))=.
-
-Another solution would be to implement a *binary search* in the *list of objects*, instead of a linear search.
-
-Currently, the aggregate of orders has a stored-representation of a *list of objects*.
-
-*** Hypothetical Solution for hypothesis two (my solution)
-Reading the https://docs.sqlalchemy.org/ documentation, one finds that calling the =self.db.query()= is deprecated.
-
-And, one should opt for the following:
-
-#+begin_src python
-db = Database(DeclarativeBase)
-
-def method(self, order_id):
-    with self.db_orders.get_session() as session:
-        # Operate on session here
-#+end_src
-
-This approach will diminish the number of =alive sessions=. And, therefore, diminish the call-overhead for any operation.
-
-** DONE Fix the performance issue
-DEADLINE: <2023-10-31 Tue> SCHEDULED: <2023-10-29 Sun>
-
-In =orders/orders/service.py=, I changed the =db= instance-declaration from:
-
-#+begin_src python
-db = DatabaseSession(DeclarativeBase)
-#+end_src
-
-To:
-#+begin_src python
-db_orders = Database(DeclarativeBase)
-#+end_src
-
-Also, in every occurrence of:
-#+begin_src python
-self.db.query(Order)*
-#+end_src
-
-I wrapped the section dealing with the =db=, with instead:
-#+begin_src python
-with self.db_orders.get_session() as session:
-    session.query(Order)*
-#+end_src
-
-*** Results
-The final report can be found at: https://a.blazemeter.com/app/?public-token=OUr335F30q95J2p1NNPSeZl83TvufXg75DgE7OIKMjgTqrcKpf#reports/r-ext-6540212b57597553416121/summary
-
-And, this is the side-to-side comparison of =get-order=, for example:
-
-#+ATTR_HTML: :width 1200px
-[[file:doc-stuff/img/execution-time-comparison-get-order.png]]
-
-The before and after, from left to right. We see the performance is now much more attached, one-to-one with the number of =hits= / =requests= at a given time, instead of accumulating over executions.
-* DONE Performance Tests - Second try (4)
+* DONE Performance Tests (4)
 
 #+begin_quote
 - Question 1: Why is performance degrading as the test runs longer?
@@ -756,3 +658,130 @@ The magnitude of the problem, though, will remain the same, in average.
 I was unable to either track or implement the debugging of the =order-get= and =order-create= methods.
 
 The most promising hypothesis is, although, the =caching=. Because of the effect it gave to =list-orders= and also it's one of the main differences in implementation in the =Orders= service and the =Products= service.
+* DONE Checking any possible issues with the DB (4)
+** DONE Check that =postgres= is running in =docker=
+#+begin_src bash
+docker ps
+#+end_src
+
+#+begin_quote
+CONTAINER ID    IMAGE    COMMAND                CREATED         STATUS           PORTS                                          NAMES
+
+c521ba004734   postgres "docker-entrypoint.s…" 47 minutes ago   Up 47 minutes   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   devPostgres
+#+end_quote
+
+** DONE Check that the container doesn't present errors internally
+#+begin_src bash
+docker logs devPostgres
+#+end_src
+
+We can see from the =logs= that *"... database system is ready to accept connections"*,
+
+#+begin_quote
+PostgreSQL init process complete; ready for start up.
+
+2023-11-01 15:14:30.112 UTC [1] LOG:  starting PostgreSQL 16.0 (Debian 16.0-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2023-11-01 15:14:30.113 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2023-11-01 15:14:30.113 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2023-11-01 15:14:30.118 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2023-11-01 15:14:30.127 UTC [61] LOG:  database system was shut down at 2023-11-01 15:14:30 UTC
+2023-11-01 15:14:30.132 UTC [1] LOG:  database system is ready to accept connections
+2023-11-01 15:19:30.137 UTC [59] LOG:  checkpoint starting: time
+2023-11-01 15:19:34.254 UTC [59] LOG:  checkpoint complete: wrote 44 buffers (0.3%); 0 WAL file(s) added, 0 removed, 0 recycled; write=4.110 s, sync=0.003 s, total=4.118 s; sync files=11, longest=0.002 s, average=0.001 s; distance=260 kB, estimate=260 kB; lsn=0/152BEA8, redo lsn=0/152BE70
+#+end_quote
+
+** DONE Check connection to the database is possible
+
+Since the =config.yml= presents the following line:
+#+begin_src yml
+DB_URIS:
+    "orders:Base": ${POSTGRES_URI:"postgres://postgres:postgres@localhost:5432/orders"}
+#+end_src
+
+After running:
+#+begin_src bash
+./dev_run.sh gateway.service orders.service products.service
+#+end_src
+
+It will execute:
+#+begin_src bash
+# create database orders locally
+python -c """import psycopg2 as db;p='postgres';con=db.connect(dbname=p,host='localhost',user=p,password=p);
+con.autocommit=True;con.cursor().execute('CREATE DATABASE orders')""" 2> /dev/null
+#+end_src
+
+We can test the connection like so:
+#+begin_src bash
+docker exec -it devPostgres psql -U postgres -d orders
+#+end_src
+
+#+begin_quote
+psql (16.0 (Debian 16.0-1.pgdg120+1))
+Type "help" for help.
+
+orders=#
+#+end_quote
+
+So, it's working.
+
+# *** Error
+
+# And we get the following *error*:
+
+# #+begin_quote
+# psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  database "orders" does not exist
+# #+end_quote
+
+# *** Solution
+
+# Using the command =createdb=, to create the =orders= database, for the user =postgres=.
+
+# #+begin_src bash
+# docker exec -it devPostgres createdb -U postgres orders
+# #+end_src
+
+# And, we can verify now the connection is working:
+
+# #+begin_src bash
+# docker exec -it devPostgres psql -U postgres -d orders
+# #+end_src
+
+# #+begin_quote
+# psql (16.0 (Debian 16.0-1.pgdg120+1))
+# Type "help" for help.
+
+# orders=#
+# #+end_quote
+
+# *** See if performance issue went away
+
+# We see that it didn't:
+# https://a.blazemeter.com/app/?public-token=D2WbR9e8XFCP1T49InTxcweqIDbajKRzK1SrvDlN8dOkp6e7XE#reports/r-ext-65427b5953ee3058060260/summary
+
+# Let's continue debugging
+** DONE Make sure the data is going through the database
+#+begin_src bash
+sudo docker exec -it devPostgres psql -U postgres
+#+end_src
+
+#+begin_src bash
+\c orders
+SELECT * FROM "orders";
+#+end_src
+
+#+begin_quote
+  id  |         created_at         |         updated_at
+------+----------------------------+---------------------------
+    1 | 2023-11-01 17:43:51.223211 | 2023-11-01 17:43:51.223218
+    2 | 2023-11-01 17:43:51.309809 | 2023-11-01 17:43:51.309815
+    3 | 2023-11-01 17:43:51.357695 | 2023-11-01 17:43:51.357702
+    4 | 2023-11-01 17:43:51.404509 | 2023-11-01 17:43:51.404516
+    5 | 2023-11-01 17:43:51.455504 | 2023-11-01 17:43:51.455511
+    6 | 2023-11-01 17:43:51.499745 | 2023-11-01 17:43:51.499751
+    7 | 2023-11-01 17:43:51.552222 | 2023-11-01 17:43:51.552229
+    8 | 2023-11-01 17:43:51.595596 | 2023-11-01 17:43:51.595602
+
+(...)
+#+end_quote
+
+We see the data is going through alright.
