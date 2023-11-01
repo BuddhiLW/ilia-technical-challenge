@@ -4,7 +4,7 @@ The answer to the problems 1 to 4 can be read in the respective tag a section is
 
 
 TOC:
--[[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\] (1)][Following README-DevEnv (1)]]
+- [[*Following README-DevEnv (1)][Following README-DevEnv (1)]]
 - [[*Running the application (1)][Running the application (1)]]
 - [[*Features (2, 3)][Features (2, 3)]]
 - [[*Execute performance test (4)][Execute performance test (4)]]
