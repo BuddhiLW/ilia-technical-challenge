@@ -47,8 +47,8 @@ bash startup.sh
 See if the project is running as supposed:
 
 #+begin_src shell
-./test/nex-smoketeSt.sh local
-#+end_src
+./test/nex-smoketest.sh local
+#+end_srC
 ** DONE Expected output
 #+ATTR_HTML: :width 800px
 [[file:doc-stuff/img/expected-output.png]]
@@ -443,3 +443,307 @@ And, this is the side-to-side comparison of =get-order=, for example:
 [[file:doc-stuff/img/execution-time-comparison-get-order.png]]
 
 The before and after, from left to right. We see the performance is now much more attached, one-to-one with the number of =hits= / =requests= at a given time, instead of accumulating over executions.
+* DONE Performance Tests - Second try (4)
+
+#+begin_quote
+- Question 1: Why is performance degrading as the test runs longer?
+- Question 2: How do you fix it?
+- Fix the performance issue.
+#+end_quote
+
+** Q1
+#+begin_quote
+Why is performance degrading as the test runs longer?
+#+end_quote
+
+The issue with performance may be due to a lack of caching, in the =Orders= service, in contrast with the use of =Redis= (local-caching), in the =Products= service.
+
+Image caption: Difference in performance =Orders= vs =Products= service calls.
+#+ATTR_HTML: :width 1200px
+[[file:doc-stuff/img/order-vs-product.png]]
+
+Due to limited resources of a server in terms of memory and CPU, repeting a common call can become a burden on the server.
+
+** Q2
+#+begin_quote
+How do you fix it?
+#+end_quote
+
+Implement some sort of caching as a wrapper/decorator. For example, using =TTL= (interal/local) or =Redis= (external).
+
+** Q3
+#+begin_quote
+Fix the performance issue.
+#+end_quote
+
+In order to debug and test further =Hypothesis 2= (connection overload), as well as the =Caching Hypothesis=, we explicitly turn on =echo=True= and fine-tune =pool_recycle= in seconds.
+
+With not much difference in performance, we also turn on =expire_on_commit= and =auto_flush=.
+
+This all done in =orders/orders/service.py=
+
+#+begin_src python
+class OrdersService:
+    name = "orders"
+
+    DB_URIS = "DB_URIS"
+
+    db_orders = Database(DeclarativeBase)
+    event_dispatcher = EventDispatcher()
+    engine = create_engine(
+        config.get(DB_URIS)["orders:Base"], echo=True, pool_recycle=240
+    )
+    method_session = scoped_session(
+        sessionmaker(
+            engine,
+            expire_on_commit=True,
+            autoflush=True,
+        )
+    )
+#+end_src
+
+*** TTL decorators (caching)
+Now, implementing the decorators in =orders/caching.py=. First, It was tried =TTLCache=; one decorator per corresponding method.
+
+#+begin_src python
+from nameko import config
+from cachetools import TTLCache
+from functools import wraps
+import hashlib  # We'll use hashlib to create cache keys
+import redis
+import json
+
+# Create an in-memory cache with a max size and time-to-live (TTL)
+cache_co = TTLCache(maxsize=500, ttl=600)  # cache for co: Create Order
+cache_get = TTLCache(maxsize=500, ttl=600)  # cache for get: Get Order
+cache_list = TTLCache(maxsize=500, ttl=600)  # cache for list: List Orders
+
+
+def cache_get_order(func):
+    @wraps(func)
+    def wrapper(self, order_id):
+        # Generate a cache key based on the method name and parameters
+        cache_key = f"{func.__name__}:{order_id}"
+
+        # Check if the result is in the cache
+        cached_result = cache_get.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+        # If not in the cache, execute the method and store the result
+        result = func(self, order_id)
+        cache_get[cache_key] = result
+
+        return result
+
+    return wrapper
+
+
+def cache_list_orders(func):
+    @wraps(func)
+    def wrapper(self):
+        # Generate a cache key based on the method name and parameters
+        cache_key = func.__name__
+
+        # Check if the result is in the cache
+        cached_result = cache_list.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+        # If not in the cache, execute the method and store the result
+        result = func(self)
+        cache_list[cache_key] = result
+
+        return result
+
+    return wrapper
+
+
+def cache_create_order(func):
+    @wraps(func)
+    def wrapper(self, order_details):
+        # Generate a cache key based on the method name and parameters
+        cache_key = hashlib.md5(str(order_details).encode()).hexdigest()
+
+        # Check if the result is in the cache
+        cached_result = cache_co.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
+        # If not in the cache, execute the method and store the result
+        result = func(self, order_details)
+        cache_co[cache_key] = result
+
+        return result
+
+    return wrapper
+#+end_src
+
+Finally, we add the decorators in =orders/service.py=, like this:
+
+#+begin_src python
+@rpc
+@cache_list_orders
+def list_orders(self):
+    with self.method_session() as session:
+        orders = session.query(Order).all()
+        data = OrderSchema().dump(orders, many=True).data
+
+        session.close()
+        return data
+#+end_src
+
+*** Result of =TTS= caching
+This gave a satisfactorily solved the performance issue for =list-orders= (listing all orders).
+
+Before adding the decorators:
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/performance-test-4step.png]]
+
+
+After adding the decorators (=TTL=):
+#+ATTR_HTML: :width 1000px
+[[file:doc-stuff/img/list-order-diff-pos.png]]
+
+We note =list-orders= went from an =average-rate= of 0.229 to 0.004!
+
+
+Also, the =hits/s= (+38%), =avg. response time= (-23%) and =bandwidth= (22x lower) all improved. Still, =order-get= and =order-create= didn't flinch.
+
+Graphically, we see a smoother curve:
+#+ATTR_HTML: :width 1200px
+[[file:doc-stuff/img/diff-overall1.png]]
+*** =Redis= decorators (caching)
+
+Trying to solve the same way =order-get= and =orders-create=, but with =Redis= because =TTS= didn't cut it, we write these decorators:
+
+#+begin_src python
+# Create a Redis connection
+REDIS_URI_KEY = "REDIS_URI"
+redis_client = redis.StrictRedis(decode_responses=True).from_url(
+    config.get(REDIS_URI_KEY)
+)
+
+
+def cache_get_with_redis(func):
+    @wraps(func)
+    def wrapper(self, order_id):
+        # Generate a cache key based on the method name and parameters
+        cache_key = f"{func.__name__}:{order_id}"
+
+        # Check if the result is in the Redis cache
+        cached_result = redis_client.get(cache_key)
+        if cached_result is not None:
+            # If cached result exists, deserialize and return it
+            return json.loads(cached_result)
+
+        # If not in the cache, execute the method and store the result in Redis
+        result = func(self, order_id)
+
+        # Cache the result as a JSON string with an expiration time (e.g., 300 seconds)
+        redis_client.setex(cache_key, 300, json.dumps(result))
+        return result
+
+    return wrapper
+
+
+def cache_result_with_redis(cache_prefix, ttl):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Serialize the arguments to use as a cache key
+            cache_key = (
+                cache_prefix + hashlib.md5(json.dumps(args).encode()).hexdigest()
+            )
+
+            # Check if the result is in the Redis cache
+            cached_result = redis_client.get(cache_key)
+            if cached_result is not None:
+                # If cached result exists, deserialize and return it
+                return json.loads(cached_result)
+
+            # If not in the cache, execute the method and store the result in Redis
+            result = func(self, *args, **kwargs)
+            # Cache the result as a JSON string with the specified TTL
+            redis_client.setex(cache_key, ttl, json.dumps(result))
+
+            return result
+
+        return wrapper
+
+    return decorator
+#+end_src
+
+And plug them in get and create orders, like so:
+
+#+begin_src python
+@rpc
+@cache_get_with_redis
+def get_order(self, order_id):
+    with self.method_session() as session:
+        order = session.query(Order).get(order_id)
+
+        if not order:
+            raise NotFound("Order with id {} not found".format(order_id))
+
+        data = OrderSchema().dump(order).data
+
+        session.close()
+        return data
+
+
+@rpc
+@cache_result_with_redis("create_orders", 600)
+def create_order(self, order_details):
+   with self.method_session() as session:
+       order = Order(
+           order_details=[
+               OrderDetail(
+                   product_id=order_detail["product_id"],
+                   price=order_detail["price"],
+                   quantity=order_detail["quantity"],
+               )
+               for order_detail in order_details
+           ]
+       )
+
+       session.add(order)
+       session.commit()
+
+       order = OrderSchema().dump(order).data
+
+       self.event_dispatcher(
+           "order_created",
+           {
+               "order": order,
+           },
+       )
+
+       session.close()
+       return order
+#+end_src
+
+*** Result caching with =Redis= and =TTL= and differences
+
+After =Redis caching=:
+https://a.blazemeter.com/app/?public-token=32UEZ8InnnmZx7rudCQPDRhLZjfu2SHPCnOVWQwWm6puocLOwz#/accounts/-1/workspaces/-1/projects/-1/sessions/r-ext-6541a5fd545f4521666578/summary/summary
+
+#+ATTR_HTML: :width 500px
+[[file:doc-stuff/img/redis-caching-result.png]]
+
+I think that by empirically fine-tuning, it's possible to remove the bell-shaped tail of the response time, also.
+
+The main notable difference between using =Redis= and =TTL= to try to solve this performance issue was the shape of the response-time. While =TTL= maintained the linear increase over use, =Redis= gave us a bell-curve.
+
+*** Result of changing connection parameters
+
+Changing connection parameters won't change overall shape of the =response-time=, but will have the effect of a sinusoidal convolution.
+
+The magnitude of the problem, though, will remain the same, in average.
+
+#+ATTR_HTML: :width 1200px
+[[file:doc-stuff/img/parameter-wiggle.png]]
+*** Final though
+I was unable to either track or implement the debugging of the =order-get= and =order-create= methods.
+
+The most promising hypothesis is, although, the =caching=. Because of the effect it gave to =list-orders= and also it's one of the main differences in implementation in the =Orders= service and the =Products= service.
