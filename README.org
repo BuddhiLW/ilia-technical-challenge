@@ -2,6 +2,15 @@
 
 The answer to the problems 1 to 4 can be read in the respective tag a section is dedicated to. I.e., Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1), etc.
 
+
+TOC:
+-[[*Following \[\[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md\]\[README-DevEnv\]\] (1)][Following README-DevEnv (1)]]
+- [[*Running the application (1)][Running the application (1)]]
+- [[*Features (2, 3)][Features (2, 3)]]
+- [[*Execute performance test (4)][Execute performance test (4)]]
+- [[*Performance Tests - Second try (4)][Performance Tests - Second try (4)]]
+
+
 * DONE Following [[https://gitlab.com/devprodexp/nameko-devexp/-/blob/main/README-DevEnv.md][README-DevEnv]] (1)
 DEADLINE: <2023-10-27 Fri> SCHEDULED: <2023-10-26 Thu>
 ** DONE Installation
@@ -743,7 +752,7 @@ The magnitude of the problem, though, will remain the same, in average.
 
 #+ATTR_HTML: :width 1200px
 [[file:doc-stuff/img/parameter-wiggle.png]]
-*** Final though
+*** Final thought
 I was unable to either track or implement the debugging of the =order-get= and =order-create= methods.
 
 The most promising hypothesis is, although, the =caching=. Because of the effect it gave to =list-orders= and also it's one of the main differences in implementation in the =Orders= service and the =Products= service.
